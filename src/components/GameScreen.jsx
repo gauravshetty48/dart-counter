@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import ScoreSheet from './ScoreSheet.jsx';
 import EntryPanel from './EntryPanel.jsx';
 import { TargetDialog, WinnerDialog } from './dialogs.jsx';
-import { roundNumber, DARTS_PER_ROUND } from '../lib/game.js';
+import { roundNumber, DARTS_PER_ROUND, isOver, winnerIdx, placesNeeded } from '../lib/game.js';
+
+const ORDINALS = ['', '1st', '2nd', '3rd'];
 
 export default function GameScreen({ game, mult, entryMode, dispatch, confirm }) {
   const [targetOpen, setTargetOpen] = useState(false);
@@ -11,8 +13,11 @@ export default function GameScreen({ game, mult, entryMode, dispatch, confirm })
   const [entryError, setEntryError] = useState('');
   const [shakeCell, setShakeCell] = useState(false);
 
-  const over = game.winner != null;
+  const over = isOver(game);
   const player = game.players[game.current];
+  // someone has checked out but the game continues (settling the runner-up)
+  const finishedNames = game.finished.map((i) => game.players[i].name);
+  const nextPlace = ORDINALS[game.finished.length + 1] || `${game.finished.length + 1}th`;
 
   // an undone round can put keypad darts back even while in total mode —
   // render dart-mode controls until that round is resolved
@@ -101,6 +106,12 @@ export default function GameScreen({ game, mult, entryMode, dispatch, confirm })
         <button type="button" className="btn ghost" onClick={newGame}>New game</button>
       </header>
 
+      {!over && finishedNames.length > 0 && (
+        <div className="podium-banner">
+          🥇 <strong>{finishedNames[0]}</strong> is out — now playing for {nextPlace} place
+        </div>
+      )}
+
       <div className="game-grid">
         <ScoreSheet
           game={game}
@@ -115,8 +126,19 @@ export default function GameScreen({ game, mult, entryMode, dispatch, confirm })
         {over ? (
           <section className="card turn-panel">
             <div className="turn-title">
-              <span className="turn-name">🏆 {game.players[game.winner].name} wins!</span>
+              <span className="turn-name">🏆 {game.players[winnerIdx(game)].name} wins!</span>
             </div>
+            {placesNeeded(game.players.length) > 1 && (
+              <ol className="podium">
+                {game.finished.map((i, place) => (
+                  <li key={i}>
+                    <span className="podium-medal">{['🥇', '🥈', '🥉'][place] || `#${place + 1}`}</span>
+                    <span className="podium-name">{game.players[i].name}</span>
+                    <span className="podium-place muted">{ORDINALS[place + 1] || `${place + 1}th`}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
             <div className="stack">
               <button type="button" className="btn primary xl" onClick={() => dispatch({ type: 'game/rematch' })}>
                 Rematch

@@ -30,7 +30,7 @@ export function validGame(g) {
     && Array.isArray(g.players) && g.players.length > 0
     && g.players.every((p) => p && typeof p.name === 'string' && Number.isInteger(p.score))
     && Number.isInteger(g.current) && g.current >= 0 && g.current < g.players.length
-    && Array.isArray(g.darts) && Array.isArray(g.history);
+    && Array.isArray(g.darts) && Array.isArray(g.history) && Array.isArray(g.finished);
 }
 
 export function newGame(names, target, starter = 0) {
@@ -41,15 +41,36 @@ export function newGame(names, target, starter = 0) {
     current: starter, // index of the player at the oche
     darts: [],        // this round's darts: { v, label }
     bust: false,
-    winner: null,     // player index once someone checks out
+    finished: [],     // player indices in finishing order: [winner, runner-up, …]
     history: [],      // { p, darts, total, bust, prev } per committed round
   };
 }
 
 export const roundSum = (darts) => darts.reduce((sum, d) => sum + d.v, 0);
 
+// How many places must be settled before the game ends:
+// solo/duel → just the winner; 3+ players → winner AND runner-up.
+export const placesNeeded = (playerCount) => (playerCount >= 3 ? 2 : 1);
+
+export const isOver = (game) => game.finished.length >= placesNeeded(game.players.length);
+
+export const winnerIdx = (game) => (game.finished.length > 0 ? game.finished[0] : null);
+export const runnerUpIdx = (game) => (game.finished.length > 1 ? game.finished[1] : null);
+
+// 1 for the winner, 2 for the runner-up, … or 0 if the player hasn't checked out.
+export const placementOf = (game, idx) => game.finished.indexOf(idx) + 1;
+
+// Next player after `from` (cyclically) who hasn't already finished.
+export function nextActive(from, playerCount, finished) {
+  for (let step = 1; step <= playerCount; step++) {
+    const idx = (from + step) % playerCount;
+    if (!finished.includes(idx)) return idx;
+  }
+  return from;
+}
+
 export const isLocked = (game) =>
-  game.winner != null || game.bust || game.darts.length >= DARTS_PER_ROUND;
+  isOver(game) || game.bust || game.darts.length >= DARTS_PER_ROUND;
 
 export function withDart(game, value, label) {
   if (isLocked(game)) return game;
@@ -57,54 +78,51 @@ export function withDart(game, value, label) {
   const remaining = game.players[game.current].score - roundSum(darts);
   const next = { ...game, darts };
   if (remaining < 0) return { ...next, bust: true }; // overshot — bust
-  if (remaining === 0) return commitRound(next);     // exact checkout wins immediately
+  if (remaining === 0) return commitRound(next);     // exact checkout — finishes this player
   return next;
 }
 
-export function commitRound(game) {
+// Shared commit path for both entry modes: subtract the round, log history,
+// register a checkout as a finishing place, and pass the oche to the next
+// player still in the game.
+function applyRound(game, { total, bust, darts }) {
   const p = game.current;
-  const total = roundSum(game.darts);
-  const entry = { p, darts: game.darts, total, bust: game.bust, prev: game.players[p].score };
-  const players = game.players.map((pl, i) =>
-    i === p && !game.bust ? { ...pl, score: pl.score - total } : pl);
-  const next = {
+  const prev = game.players[p].score;
+  const players = bust
+    ? game.players
+    : game.players.map((pl, i) => (i === p ? { ...pl, score: prev - total } : pl));
+  const checkedOut = !bust && players[p].score === 0;
+  const finished = checkedOut ? [...game.finished, p] : game.finished;
+  const over = finished.length >= placesNeeded(players.length);
+  return {
     ...game,
     players,
-    history: [...game.history, entry],
+    finished,
+    history: [...game.history, { p, darts, total, bust, prev }],
     darts: [],
     bust: false,
-    current: (p + 1) % game.players.length,
+    // when over, leave the pointer on the last thrower; otherwise advance past finishers
+    current: over ? p : nextActive(p, players.length, finished),
   };
-  // reaching exactly zero wins, however the round was committed
-  return players[p].score === 0 ? { ...next, winner: p } : next;
+}
+
+export function commitRound(game) {
+  return applyRound(game, { total: roundSum(game.darts), bust: game.bust, darts: game.darts });
 }
 
 /**
  * Commit a whole round at once from a typed total (scoresheet quick entry).
- * Over the remaining score → bust (round scores 0); exactly 0 left → win.
+ * Over the remaining score → bust (round scores 0); exactly 0 left → checkout.
  */
 export function withTotalRound(game, total) {
-  if (game.winner != null || game.darts.length > 0) return game;
+  if (isOver(game) || game.darts.length > 0) return game;
   if (!Number.isInteger(total) || total < 0 || total > 60 * DARTS_PER_ROUND) return game;
-  const p = game.current;
-  const prev = game.players[p].score;
-  const remaining = prev - total;
-  const bust = remaining < 0;
-  const next = {
-    ...game,
-    players: bust
-      ? game.players
-      : game.players.map((pl, i) => (i === p ? { ...pl, score: remaining } : pl)),
-    history: [...game.history, { p, darts: [], total, bust, prev }],
-    darts: [],
-    bust: false,
-    current: (p + 1) % game.players.length,
-  };
-  return remaining === 0 ? { ...next, winner: p } : next;
+  const bust = total > game.players[game.current].score;
+  return applyRound(game, { total, bust, darts: [] });
 }
 
 export function withUndoDart(game) {
-  if (game.winner != null || game.darts.length === 0) return game;
+  if (isOver(game) || game.darts.length === 0) return game;
   const darts = game.darts.slice(0, -1);
   const bust = game.players[game.current].score - roundSum(darts) < 0;
   return { ...game, darts, bust };
@@ -113,19 +131,21 @@ export function withUndoDart(game) {
 export function withUndoRound(game) {
   if (game.history.length === 0) return game;
   const entry = game.history[game.history.length - 1];
+  const wasCheckout = !entry.bust && entry.prev - entry.total === 0;
   return {
     ...game,
     history: game.history.slice(0, -1),
     players: game.players.map((pl, i) => (i === entry.p ? { ...pl, score: entry.prev } : pl)),
+    // un-finish that player if the undone round was their checkout
+    finished: wasCheckout ? game.finished.filter((i) => i !== entry.p) : game.finished,
     current: entry.p,
     darts: entry.darts, // restored as editable, so single darts can be fixed
     bust: entry.bust,
-    winner: null,
   };
 }
 
 export function withUndoWinningDart(game) {
-  if (game.winner == null) return game;
+  if (game.finished.length === 0) return game;
   const reverted = withUndoRound(game);
   return { ...reverted, darts: reverted.darts.slice(0, -1), bust: false };
 }
@@ -139,7 +159,7 @@ export function withTarget(game, target) {
     darts: [],
     history: [],
     bust: false,
-    winner: null,
+    finished: [],
     current: game.starter,
   };
 }
@@ -161,5 +181,7 @@ export function statsFor(game, idx) {
 export const threeDartAvg = ({ dartsCount, scored }) =>
   dartsCount ? ((scored / dartsCount) * 3).toFixed(1) : null;
 
+// The round the current thrower is about to play (each player's Nth entry is
+// their round N), so the label stays correct even when finishers are skipped.
 export const roundNumber = (game) =>
-  Math.floor(game.history.length / game.players.length) + 1;
+  game.history.filter((h) => h.p === game.current).length + 1;

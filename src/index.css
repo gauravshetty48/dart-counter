@@ -243,6 +243,8 @@ input:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 1p
 .sheet tr.current th, .sheet tr.current td { background: var(--key); }
 .sheet tr.current .col-name .sheet-name { color: var(--green-bright); }
 .sheet tr.winner .col-name .sheet-name { color: var(--gold); }
+.sheet tr.placed .col-name .sheet-name { color: #cdd3c2; }
+.sheet tr.placed th, .sheet tr.placed td { opacity: .82; }
 
 .sheet-name {
   display: block;
@@ -303,6 +305,37 @@ input:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 1p
 .entry-actions { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .hint.error { color: var(--red); }
 .turn-panel .hint.left { margin-bottom: 14px; }
+
+/* "X is out — now playing for 2nd place" banner */
+.podium-banner {
+  background: linear-gradient(180deg, #2a2410, #211d0c);
+  border: 1px solid #4a3f18;
+  color: var(--gold);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: center;
+}
+.podium-banner strong { color: var(--text); }
+
+/* podium list (game-over panel + winner dialog) */
+.podium { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; width: 100%; }
+.podium li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+}
+.podium li:first-child { border-color: var(--gold); }
+.podium-medal { font-size: 1.2rem; }
+.podium-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium-place { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 
 /* ---------- game: turn panel ---------- */
 

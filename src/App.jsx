@@ -2,7 +2,8 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { LS, lsGet, lsSet } from './lib/storage.js';
 import {
   cleanNames, parseTarget, validGame, newGame, withDart, withTotalRound, withUndoDart,
-  withUndoRound, withUndoWinningDart, withTarget, commitRound, isLocked, MAX_NAME,
+  withUndoRound, withUndoWinningDart, withTarget, commitRound, isLocked, isOver,
+  nextActive, MAX_NAME,
 } from './lib/game.js';
 import SetupScreen from './components/SetupScreen.jsx';
 import GameScreen from './components/GameScreen.jsx';
@@ -10,8 +11,20 @@ import { ConfirmDialog } from './components/dialogs.jsx';
 
 function initialState() {
   let game = lsGet(LS.game, null);
-  if (!validGame(game) || game.winner != null) game = null; // resume unfinished games only
+  // migrate pre-runner-up saves: rebuild `finished` from checked-out players
+  if (game && Array.isArray(game.players) && !Array.isArray(game.finished)) {
+    const zeros = game.players.map((p, i) => (p?.score === 0 ? i : -1)).filter((i) => i >= 0);
+    const ordered = game.winner != null
+      ? [game.winner, ...zeros.filter((i) => i !== game.winner)]
+      : zeros;
+    game = { ...game, finished: ordered };
+  }
   if (game && !Number.isInteger(game.starter)) game = { ...game, starter: 0 };
+  // never leave the oche on a player who has already finished
+  if (game && Array.isArray(game.finished) && game.finished.includes(game.current)) {
+    game = { ...game, current: nextActive(game.current, game.players.length, game.finished) };
+  }
+  if (!validGame(game) || isOver(game)) game = null; // resume unfinished games only
   const entryMode = lsGet(LS.entryMode, 'total');
   return {
     view: game ? 'game' : 'setup',
@@ -70,7 +83,7 @@ function reducer(state, action) {
     case 'game/undoDart':
       return { ...state, game: withUndoDart(state.game) };
     case 'game/endTurn':
-      if (state.game.winner != null) return state;
+      if (isOver(state.game)) return state;
       return { ...state, game: commitRound(state.game), mult: 1 };
     case 'game/undoRound':
       return { ...state, game: withUndoRound(state.game), mult: 1 };

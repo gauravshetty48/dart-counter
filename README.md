@@ -16,6 +16,11 @@ No backend, no accounts — game data lives in `localStorage`.
 - **Standard rules**: hitting exactly zero wins; a round total that goes over
   the remaining score is a *bust* — the round scores nothing, the cell is marked
   BUST, and the turn passes (no double-out requirement).
+- **Winner *and* runner-up**: with 3+ players the game doesn't stop at the first
+  checkout. The winner is locked in (🥇) and play continues — finished players
+  are skipped in the rotation — until a second player checks out (🥈). The final
+  podium is shown on the game-over screen. Two-player games end at the first
+  checkout, as before.
 - **Undo everything** — the last dart before committing, or roll back the whole
   last round from the history panel.
 - **Saved players** — anyone you add is remembered in `localStorage`, so next

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { roundSum, statsFor, threeDartAvg } from '../lib/game.js';
+import { roundSum, statsFor, threeDartAvg, isOver, placementOf } from '../lib/game.js';
+
+const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
  * Bowling-style scoresheet: one row per player, one column per round,
@@ -10,12 +12,12 @@ export default function ScoreSheet({
   game, entryMode, draft, onDraftChange, onCommitTotal, shakeCell, onShakeEnd,
 }) {
   const wrapRef = useRef(null);
-  const playerCount = game.players.length;
-  const over = game.winner != null;
-  const totalRounds = over
-    ? Math.ceil(game.history.length / playerCount)
-    : Math.floor(game.history.length / playerCount) + 1;
+  const over = isOver(game);
   const entriesByPlayer = game.players.map((_, p) => game.history.filter((h) => h.p === p));
+  // finishers stop throwing, so entry counts go uneven — size the grid to the
+  // busiest player, leaving room for the current thrower's live cell.
+  const maxEntries = Math.max(0, ...entriesByPlayer.map((e) => e.length));
+  const totalRounds = Math.max(maxEntries, over ? 0 : entriesByPlayer[game.current].length + 1);
 
   // keep the latest round column in view as the sheet grows
   useEffect(() => {
@@ -81,13 +83,15 @@ export default function ScoreSheet({
           <tbody>
             {game.players.map((player, p) => {
               const entries = entriesByPlayer[p];
+              const place = placementOf(game, p); // 1 = winner, 2 = runner-up, 0 = still in
               const isCurrent = !over && p === game.current;
-              const isWinner = game.winner === p;
+              const medal = place ? MEDALS[place - 1] || `#${place}` : '';
+              const rowClass = isCurrent ? 'current' : place === 1 ? 'winner' : place ? 'placed' : undefined;
               const avg = threeDartAvg(statsFor(game, p));
               return (
-                <tr key={`${p}-${player.name}`} className={isCurrent ? 'current' : isWinner ? 'winner' : undefined}>
+                <tr key={`${p}-${player.name}`} className={rowClass}>
                   <th className="col-name" scope="row">
-                    <span className="sheet-name">{isWinner ? '🏆 ' : ''}{player.name}</span>
+                    <span className="sheet-name">{medal ? `${medal} ` : ''}{player.name}</span>
                     <span className="sheet-sub">{avg != null ? `avg ${avg}` : ' '}</span>
                   </th>
                   {Array.from({ length: totalRounds }, (_, r) => {
@@ -97,7 +101,7 @@ export default function ScoreSheet({
                   })}
                   <td className="col-remain">
                     {/* keyed on the score so the pop animation replays on every change */}
-                    <span className={`remain${isWinner ? ' winner' : ''}`} key={player.score}>
+                    <span className={`remain${place ? ' winner' : ''}`} key={player.score}>
                       {player.score}
                     </span>
                   </td>
