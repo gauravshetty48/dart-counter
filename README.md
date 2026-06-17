@@ -21,6 +21,12 @@ No backend, no accounts — game data lives in `localStorage`.
   are skipped in the rotation — until a second player checks out (🥈). The final
   podium is shown on the game-over screen. Two-player games end at the first
   checkout, as before.
+- **Add a player mid-game** — someone shows up late? Use **+ Player** in the top
+  bar (available only during the first two rounds) to drop them in without
+  abandoning the game. They take the oche and throw one catch-up round for every
+  round the field has already completed — two rounds done → two throws, one round
+  done → one throw — then slot into the rotation at the end of the lineup. The
+  button hides itself once a third round is banked.
 - **Undo everything** — the last dart before committing, or roll back the whole
   last round from the history panel.
 - **Saved players** — anyone you add is remembered in `localStorage`, so next
@@ -82,7 +88,7 @@ src/
     EntryPanel.jsx         # entry-mode toggle, hints, undo round
     Keypad.jsx             # dart-by-dart entry with Double/Triple
     Modal.jsx              # native <dialog> wrapper
-    dialogs.jsx            # confirm / target / winner dialogs
+    dialogs.jsx            # confirm / target / add-player / winner dialogs
     PresetChips.jsx        # 101 / 201 / 301 / 501 quick picks
 ```
 

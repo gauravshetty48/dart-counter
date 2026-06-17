@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { LS, lsGet, lsSet } from './lib/storage.js';
 import {
   cleanNames, parseTarget, validGame, newGame, withDart, withTotalRound, withUndoDart,
-  withUndoRound, withUndoWinningDart, withTarget, commitRound, isLocked, isOver,
+  withUndoRound, withUndoWinningDart, withTarget, commitRound, addPlayer, isLocked, isOver,
   nextActive, MAX_NAME,
 } from './lib/game.js';
 import SetupScreen from './components/SetupScreen.jsx';
@@ -77,6 +77,12 @@ function reducer(state, action) {
       const game = withTotalRound(state.game, action.total);
       return game === state.game ? state : { ...state, game, mult: 1 };
     }
+    case 'game/addPlayer': {
+      const game = addPlayer(state.game, action.name);
+      if (game === state.game) return state;
+      // remember the newcomer for future games, like the setup roster does
+      return { ...state, game, roster: cleanNames([action.name, ...state.roster]), mult: 1 };
+    }
     case 'game/mult':
       if (isLocked(state.game)) return state;
       return { ...state, mult: state.mult === action.mult ? 1 : action.mult };
@@ -129,6 +135,7 @@ export default function App() {
           game={state.game}
           mult={state.mult}
           entryMode={state.entryMode}
+          roster={state.roster}
           dispatch={dispatch}
           confirm={confirm}
         />

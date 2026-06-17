@@ -43,10 +43,15 @@ export function newGame(names, target, starter = 0) {
     bust: false,
     finished: [],     // player indices in finishing order: [winner, runner-up, …]
     history: [],      // { p, darts, total, bust, prev } per committed round
+    catchUp: null,    // a latecomer taking back-to-back rounds: { player, rounds, resumeAt }
   };
 }
 
 export const roundSum = (darts) => darts.reduce((sum, d) => sum + d.v, 0);
+
+// Rounds player `idx` has committed so far (one history entry per round).
+export const roundsCompleted = (game, idx) =>
+  game.history.filter((h) => h.p === idx).length;
 
 // How many places must be settled before the game ends:
 // solo/duel → just the winner; 3+ players → winner AND runner-up.
@@ -82,6 +87,25 @@ export function withDart(game, value, label) {
   return next;
 }
 
+// Decide who throws next once player `p` has committed a round. A latecomer
+// (game.catchUp) keeps the oche for back-to-back rounds until they've drawn
+// level with the field, then play hands back to whoever was interrupted.
+// The catch-up record is left in place (not cleared) once spent, so that an
+// undo across the hand-back point naturally re-arms it; `isCatchingUp` reads
+// the live round count to tell whether it's still in effect.
+function advance(game, p, playerCount, finished, over) {
+  const cu = game.catchUp;
+  const done = cu && p === cu.player ? roundsCompleted(game, p) + 1 : 0; // incl. this round
+  if (cu && p === cu.player && !over && done <= cu.rounds) {
+    if (done < cu.rounds && !finished.includes(p)) {
+      return { current: p, catchUp: cu }; // still behind — throw again
+    }
+    return { current: cu.resumeAt, catchUp: cu }; // drew level (or checked out) — hand back
+  }
+  // when over, leave the pointer on the last thrower; otherwise advance past finishers
+  return { current: over ? p : nextActive(p, playerCount, finished), catchUp: cu };
+}
+
 // Shared commit path for both entry modes: subtract the round, log history,
 // register a checkout as a finishing place, and pass the oche to the next
 // player still in the game.
@@ -94,6 +118,7 @@ function applyRound(game, { total, bust, darts }) {
   const checkedOut = !bust && players[p].score === 0;
   const finished = checkedOut ? [...game.finished, p] : game.finished;
   const over = finished.length >= placesNeeded(players.length);
+  const { current, catchUp } = advance(game, p, players.length, finished, over);
   return {
     ...game,
     players,
@@ -101,8 +126,8 @@ function applyRound(game, { total, bust, darts }) {
     history: [...game.history, { p, darts, total, bust, prev }],
     darts: [],
     bust: false,
-    // when over, leave the pointer on the last thrower; otherwise advance past finishers
-    current: over ? p : nextActive(p, players.length, finished),
+    current,
+    catchUp,
   };
 }
 
@@ -161,6 +186,48 @@ export function withTarget(game, target) {
     bust: false,
     finished: [],
     current: game.starter,
+    catchUp: null,
+  };
+}
+
+// True while a latecomer still owes catch-up rounds. The catch-up record sticks
+// around after it's spent (so undo can re-arm it), so test the live round count
+// rather than the mere presence of the record.
+export const isCatchingUp = (game) =>
+  Boolean(game.catchUp) && roundsCompleted(game, game.catchUp.player) < game.catchUp.rounds;
+
+// A latecomer may only join during the opening two rounds — i.e. before anyone
+// has banked a third round — and only between turns (no half-entered darts) and
+// not while a previous latecomer is still catching up.
+export function canAddPlayer(game) {
+  if (!validGame(game) || isOver(game)) return false;
+  if (game.darts.length > 0 || game.bust || isCatchingUp(game)) return false;
+  const maxDone = Math.max(0, ...game.players.map((_, i) => roundsCompleted(game, i)));
+  return maxDone <= 2;
+}
+
+// How many catch-up rounds a newcomer would owe if added right now: one for
+// every round the whole field has already completed (the minimum round count).
+export const pendingCatchUp = (game) =>
+  Math.min(...game.players.map((_, i) => roundsCompleted(game, i)));
+
+// Add `name` to a game in progress. The newcomer takes the oche immediately and
+// throws their catch-up rounds back-to-back to draw level, then slots in at the
+// end of the rotation. With nothing to catch up they simply join the current
+// round last. No-ops (returns the same game) if the add isn't allowed.
+export function addPlayer(game, name) {
+  if (!canAddPlayer(game)) return game;
+  const clean = String(name ?? '').trim().slice(0, MAX_NAME);
+  if (!clean || game.players.some((p) => p.name.toLowerCase() === clean.toLowerCase())) return game;
+  const idx = game.players.length;
+  const players = [...game.players, { name: clean, score: game.target }];
+  const rounds = pendingCatchUp(game);
+  if (rounds === 0) return { ...game, players }; // joins the current round, no catch-up
+  return {
+    ...game,
+    players,
+    catchUp: { player: idx, rounds, resumeAt: game.current },
+    current: idx,
   };
 }
 
@@ -183,5 +250,4 @@ export const threeDartAvg = ({ dartsCount, scored }) =>
 
 // The round the current thrower is about to play (each player's Nth entry is
 // their round N), so the label stays correct even when finishers are skipped.
-export const roundNumber = (game) =>
-  game.history.filter((h) => h.p === game.current).length + 1;
+export const roundNumber = (game) => roundsCompleted(game, game.current) + 1;

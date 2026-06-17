@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import ScoreSheet from './ScoreSheet.jsx';
 import EntryPanel from './EntryPanel.jsx';
-import { TargetDialog, WinnerDialog } from './dialogs.jsx';
-import { roundNumber, DARTS_PER_ROUND, isOver, winnerIdx, placesNeeded } from '../lib/game.js';
+import { TargetDialog, WinnerDialog, AddPlayerDialog } from './dialogs.jsx';
+import {
+  roundNumber, DARTS_PER_ROUND, isOver, winnerIdx, placesNeeded, canAddPlayer, isCatchingUp,
+  roundsCompleted,
+} from '../lib/game.js';
 
 const ORDINALS = ['', '1st', '2nd', '3rd'];
 
-export default function GameScreen({ game, mult, entryMode, dispatch, confirm }) {
+export default function GameScreen({ game, mult, entryMode, roster, dispatch, confirm }) {
   const [targetOpen, setTargetOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [winnerDismissed, setWinnerDismissed] = useState(false);
   const [draft, setDraft] = useState('');       // total-mode cell value while typing
   const [entryError, setEntryError] = useState('');
@@ -103,8 +107,27 @@ export default function GameScreen({ game, mult, entryMode, dispatch, confirm })
           Target {game.target} ✎
         </button>
         <span className="round">{over ? 'Game over' : `Round ${roundNumber(game)}`}</span>
-        <button type="button" className="btn ghost" onClick={newGame}>New game</button>
+        <div className="topbar-actions">
+          {canAddPlayer(game) && (
+            <button
+              type="button"
+              className="btn ghost"
+              title="Add a player — only during the first two rounds"
+              onClick={() => setAddOpen(true)}
+            >
+              + Player
+            </button>
+          )}
+          <button type="button" className="btn ghost" onClick={newGame}>New game</button>
+        </div>
       </header>
+
+      {!over && isCatchingUp(game) && (
+        <div className="catchup-banner">
+          🆕 <strong>{game.players[game.catchUp.player].name}</strong> is catching up — round{' '}
+          {roundsCompleted(game, game.catchUp.player) + 1} of {game.catchUp.rounds}
+        </div>
+      )}
 
       {!over && finishedNames.length > 0 && (
         <div className="podium-banner">
@@ -171,6 +194,13 @@ export default function GameScreen({ game, mult, entryMode, dispatch, confirm })
         target={game.target}
         onApply={(target) => dispatch({ type: 'game/target', target })}
         onClose={() => setTargetOpen(false)}
+      />
+      <AddPlayerDialog
+        open={addOpen}
+        game={game}
+        roster={roster}
+        onAdd={(name) => dispatch({ type: 'game/addPlayer', name })}
+        onClose={() => setAddOpen(false)}
       />
       <WinnerDialog
         game={game}

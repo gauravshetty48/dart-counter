@@ -199,7 +199,9 @@ input:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 1p
 /* ---------- game: topbar & scoresheet ---------- */
 
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.round { color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.topbar-actions { display: flex; align-items: center; gap: 2px; }
+.topbar .btn.ghost { padding: 8px 10px; }
+.round { color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 
 .sheet-card { background: var(--card-2); padding: 6px; }
 .sheet-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
@@ -319,6 +321,19 @@ input:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 1p
 }
 .podium-banner strong { color: var(--text); }
 
+/* "X is catching up — round 1 of 2" banner for a mid-game newcomer */
+.catchup-banner {
+  background: linear-gradient(180deg, #142a18, #0f2113);
+  border: 1px solid #2f5d3a;
+  color: var(--green-bright);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: center;
+}
+.catchup-banner strong { color: var(--text); }
+
 /* podium list (game-over panel + winner dialog) */
 .podium { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; width: 100%; }
 .podium li {
@@ -401,6 +416,12 @@ dialog h2 { margin: 0 0 14px; font-size: 1.1rem; }
 dialog p { margin: 0; }
 dialog menu { display: flex; gap: 10px; margin: 18px 0 0; padding: 0; }
 dialog menu .btn { flex: 1; }
+/* dialog description sits above the input — give it room to breathe */
+.hint.left.add-desc { margin: 12px 0 16px; }
+.add-saved { margin-top: 14px; }
+.add-saved .roster-title { margin: 0 0 8px; }
+/* no remove (✕) button in this dialog, so the chips need symmetric padding */
+.add-saved .chip-add { padding: 8px 14px; }
 
 .winner-box { text-align: center; display: grid; gap: 8px; justify-items: center; }
 .winner-box h2 { margin: 0; font-size: 1.4rem; }
