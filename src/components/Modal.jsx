@@ -11,6 +11,9 @@ export default function Modal({ open, onClose, className, children }) {
     if (open && !dlg.open) {
       dlg.showModal();
       dlg.querySelector('[data-autofocus]')?.focus();
+      // showModal() defaults focus to the first focusable control, which can
+      // auto-scroll a tall dialog (e.g. a big podium) past its own heading
+      dlg.scrollTop = 0;
     } else if (!open && dlg.open) {
       dlg.close();
     }

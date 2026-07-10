@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ScoreSheet from './ScoreSheet.jsx';
 import EntryPanel from './EntryPanel.jsx';
+import Podium from './Podium.jsx';
 import { TargetDialog, WinnerDialog, AddPlayerDialog } from './dialogs.jsx';
 import {
-  roundNumber, DARTS_PER_ROUND, isOver, winnerIdx, placesNeeded, canAddPlayer, isCatchingUp,
+  roundNumber, DARTS_PER_ROUND, isOver, winnerIdx, canAddPlayer, isCatchingUp,
   roundsCompleted,
 } from '../lib/game.js';
+import { playVictorySound, playGameOverSound } from '../lib/sound.js';
 
+const MEDALS = ['🥇', '🥈', '🥉'];
 const ORDINALS = ['', '1st', '2nd', '3rd'];
 
 export default function GameScreen({ game, mult, entryMode, roster, dispatch, confirm }) {
@@ -31,7 +34,18 @@ export default function GameScreen({ game, mult, entryMode, roster, dispatch, co
   // even if a previous dialog was dismissed or closed via its own buttons
   useEffect(() => {
     setWinnerDismissed(false);
+    if (!over) return;
+    // let the checkout chime below finish before the exit tone comes in
+    const t = setTimeout(playGameOverSound, 300);
+    return () => clearTimeout(t);
   }, [over]);
+
+  // a checkout chime for every place settled (1st, 2nd, 3rd, …) — not just on mount
+  const finishedCountRef = useRef(game.finished.length);
+  useEffect(() => {
+    if (game.finished.length > finishedCountRef.current) playVictorySound();
+    finishedCountRef.current = game.finished.length;
+  }, [game.finished.length]);
 
   // new active cell → clean slate for typing
   useEffect(() => {
@@ -131,7 +145,8 @@ export default function GameScreen({ game, mult, entryMode, roster, dispatch, co
 
       {!over && finishedNames.length > 0 && (
         <div className="podium-banner">
-          🥇 <strong>{finishedNames[0]}</strong> is out — now playing for {nextPlace} place
+          <strong>{finishedNames.map((n, i) => `${MEDALS[i] ?? `#${i + 1}`} ${n}`).join(', ')}</strong>{' '}
+          {finishedNames.length > 1 ? 'are' : 'is'} out — now playing for {nextPlace} place
         </div>
       )}
 
@@ -151,17 +166,7 @@ export default function GameScreen({ game, mult, entryMode, roster, dispatch, co
             <div className="turn-title">
               <span className="turn-name">🏆 {game.players[winnerIdx(game)].name} wins!</span>
             </div>
-            {placesNeeded(game.players.length) > 1 && (
-              <ol className="podium">
-                {game.finished.map((i, place) => (
-                  <li key={i}>
-                    <span className="podium-medal">{['🥇', '🥈', '🥉'][place] || `#${place + 1}`}</span>
-                    <span className="podium-name">{game.players[i].name}</span>
-                    <span className="podium-place muted">{ORDINALS[place + 1] || `${place + 1}th`}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
+            {game.players.length > 1 && <Podium game={game} />}
             <div className="stack">
               <button type="button" className="btn primary xl" onClick={() => dispatch({ type: 'game/rematch' })}>
                 Rematch

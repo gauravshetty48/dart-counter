@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal.jsx';
 import PresetChips from './PresetChips.jsx';
+import Podium from './Podium.jsx';
 import {
-  parseTarget, statsFor, threeDartAvg, winnerIdx, placesNeeded, pendingCatchUp, MAX_NAME,
+  parseTarget, statsFor, threeDartAvg, winnerIdx, pendingCatchUp, MAX_NAME,
 } from '../lib/game.js';
 
 /** Shared confirm dialog; `request` is { message, confirmLabel, resolve } or null. */
@@ -74,9 +75,6 @@ export function TargetDialog({ open, target, onApply, onClose }) {
     </Modal>
   );
 }
-
-const MEDALS = ['🥇', '🥈', '🥉'];
-const ORDINALS = ['', '1st', '2nd', '3rd'];
 
 /**
  * Add a player to a game already in progress. Explains the catch-up they'll
@@ -169,7 +167,6 @@ export function WinnerDialog({ game, open, onClose, onRematch, onSetup, onUndoDa
 
   const winner = game.players[wIdx];
   const stats = statsFor(game, wIdx);
-  const showPodium = placesNeeded(game.players.length) > 1;
   return (
     <Modal open={open} onClose={onClose} className="winner-modal">
       <div className="winner-box">
@@ -178,17 +175,7 @@ export function WinnerDialog({ game, open, onClose, onRematch, onSetup, onUndoDa
         <p className="muted">
           Checked out {game.target} in {stats.dartsCount} darts · 3-dart avg {threeDartAvg(stats) ?? '0'}
         </p>
-        {showPodium && (
-          <ol className="podium">
-            {game.finished.map((i, place) => (
-              <li key={i}>
-                <span className="podium-medal">{MEDALS[place] || `#${place + 1}`}</span>
-                <span className="podium-name">{game.players[i].name}</span>
-                <span className="podium-place muted">{ORDINALS[place + 1] || `${place + 1}th`}</span>
-              </li>
-            ))}
-          </ol>
-        )}
+        {game.players.length > 1 && <Podium game={game} />}
         <menu>
           <button type="button" className="btn primary xl" onClick={onRematch}>Rematch</button>
           <button type="button" className="btn xl" onClick={onSetup}>Change players / score</button>

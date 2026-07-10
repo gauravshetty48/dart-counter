@@ -64,8 +64,9 @@ export const roundsCompleted = (game, idx) =>
   game.history.filter((h) => h.p === idx).length;
 
 // How many places must be settled before the game ends:
-// solo/duel → just the winner; 3+ players → winner AND runner-up.
-export const placesNeeded = (playerCount) => (playerCount >= 3 ? 2 : 1);
+// solo/duel → just the winner; 3 players → winner and runner-up (last is automatic);
+// 4+ players → winner, runner-up, AND third (anyone beyond that is automatic).
+export const placesNeeded = (playerCount) => (playerCount <= 2 ? 1 : Math.min(playerCount - 1, 3));
 
 export const isOver = (game) => game.finished.length >= placesNeeded(game.players.length);
 
@@ -74,6 +75,16 @@ export const runnerUpIdx = (game) => (game.finished.length > 1 ? game.finished[1
 
 // 1 for the winner, 2 for the runner-up, … or 0 if the player hasn't checked out.
 export const placementOf = (game, idx) => game.finished.indexOf(idx) + 1;
+
+// Everyone who never explicitly checked out, ranked by how close they got:
+// lowest remaining score (closest to a finish) first, highest — furthest
+// behind — last. That last entry is the game's "bottom" finisher.
+export function restRanking(game) {
+  return game.players
+    .map((_, i) => i)
+    .filter((i) => !game.finished.includes(i))
+    .sort((a, b) => game.players[a].score - game.players[b].score);
+}
 
 // Next player after `from` (cyclically) who hasn't already finished.
 export function nextActive(from, playerCount, finished) {
