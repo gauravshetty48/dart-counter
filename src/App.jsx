@@ -3,7 +3,7 @@ import { LS, lsGet, lsSet } from './lib/storage.js';
 import {
   cleanNames, parseTarget, validGame, newGame, withDart, withTotalRound, withUndoDart,
   withUndoRound, withUndoWinningDart, withTarget, commitRound, addPlayer, isLocked, isOver,
-  nextActive, MAX_NAME,
+  nextActive, shuffle, MAX_NAME,
 } from './lib/game.js';
 import SetupScreen from './components/SetupScreen.jsx';
 import GameScreen from './components/GameScreen.jsx';
@@ -54,7 +54,7 @@ function reducer(state, action) {
         ...state,
         roster: cleanNames([...state.lineup, ...state.roster]), // remember everyone
         lastTarget: action.target,
-        game: newGame([...state.lineup], action.target, 0),
+        game: newGame(shuffle(state.lineup), action.target, 0),
         mult: 1,
         view: 'game',
       };

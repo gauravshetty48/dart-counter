@@ -19,6 +19,16 @@ export function cleanNames(value) {
   return out;
 }
 
+// Fisher-Yates: returns a new array in random order, leaves `array` untouched.
+export function shuffle(array) {
+  const out = [...array];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export function parseTarget(value) {
   const n = Math.floor(Number(value));
   return Number.isFinite(n) && n >= 1 && n <= 9999 ? n : null;
