@@ -337,55 +337,58 @@ input:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 1p
 }
 .catchup-banner strong { color: var(--text); }
 
-/* podium list (game-over panel + winner dialog) — full standings, not just
-   the top 3: finishers get a medal + the round they closed out, everyone
-   else is ranked by how close they were when the game ended. */
-.podium { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; width: 100%; }
-.podium li {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--card-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  text-align: left;
+/* podium standings table (game-over panel + winner dialog) — full overview:
+   rank, name, the round they were on, their average, and how much they had
+   left when the game ended (0 once checked out). Rows keep a card-like
+   rounded look via border-spacing rather than table borders. */
+.podium {
+  width: 100%;
+  margin: 4px 0 0;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+  table-layout: fixed;
 }
-.podium li.gold { border-color: var(--gold); }
-.podium li.silver { border-color: var(--silver); }
-.podium li.bronze { border-color: var(--bronze); }
-.podium li.joker { border-color: var(--joker); }
-.podium-medal { font-size: 1.2rem; }
-.podium-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-/* name flexes with the joker tag so a long name truncates on its own —
-   the badge (flex-shrink: 0) always stays visible instead of getting
-   swallowed by the name's ellipsis */
-.podium-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-weight: 700; }
-.podium-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.podium-detail {
-  font-size: .72rem;
-  font-weight: 600;
+.podium .col-rank { width: 24%; }
+.podium .col-stat { width: 16%; }
+.podium thead th {
+  padding: 0 8px 4px;
+  font-size: .66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
   color: var(--muted);
+  text-align: center;
+}
+.podium thead th.col-name-head { text-align: left; }
+.podium thead th.col-stat-head { padding-left: 2px; padding-right: 2px; }
+.podium td {
+  padding: 9px 8px;
+  background: var(--card-2);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: center;
   font-variant-numeric: tabular-nums;
+}
+.podium td:first-child { border-left: 1px solid var(--line); border-radius: 10px 0 0 10px; }
+.podium td:last-child { border-right: 1px solid var(--line); border-radius: 0 10px 10px 0; }
+.podium td.podium-rank { padding-left: 4px; padding-right: 4px; font-weight: 700; white-space: nowrap; }
+.podium td.podium-stat { padding-left: 2px; padding-right: 2px; font-size: .92rem; }
+.podium td.podium-name {
+  font-weight: 700;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.podium-place { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.podium tr.gold td { border-color: var(--gold); }
+.podium tr.gold td.podium-rank { color: var(--gold); }
+.podium tr.silver td { border-color: var(--silver); }
+.podium tr.silver td.podium-rank { color: var(--silver); }
+.podium tr.bronze td { border-color: var(--bronze); }
+.podium tr.bronze td.podium-rank { color: var(--bronze); }
+.podium tr.joker td { border-color: var(--joker); }
 
-.joker-tag {
-  display: inline-block;
-  flex-shrink: 0;
-  padding: 1px 8px;
-  font-size: .66rem;
-  font-weight: 700;
-  color: var(--joker);
-  background: rgba(185, 140, 214, .15);
-  border: 1px solid var(--joker);
-  border-radius: 999px;
-  vertical-align: middle;
-}
+.joker-tag { color: var(--joker); font-weight: 700; }
 
 /* ---------- game: turn panel ---------- */
 
